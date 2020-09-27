@@ -9,22 +9,137 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+## Exploration
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+Imported the data as well as ggplot2 and dplyr
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+```{r data}
 
-```{r cars}
-summary(cars)
+dat <- readxl::read_xls('C:/Users/joelm/Documents/ISU Schoolwork/DS 202/ds202_lab3/GSS.xls')
+library(ggplot2)
+library(dplyr)
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+Renamed the columns of dat for easier accessibility.
+```{r rename}
+dat <- dat %>%
+  rename('gss_year' = 'Gss year for this respondent',  'id' = 'Respondent id number', 'marital_status' = 'Marital status' , 'highest_year_of_school' = 'Highest year of school completed', 'sex' = 'Respondents sex', 'party_affiliation' = 'Political party affiliation', 'general_happiness' = 'General happiness', 'ballot_used_for_interview' = 'Ballot used for interview')
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Question 1
+
+Changed highest year of school column to numeric. This caused values of 'no answer' in the column to become na making it easier to remove them. Then I removed na and grouped by party affiliation and found the mean of highest year of school complete.
+
+```{r q1}
+q1dat <- dat
+
+q1dat$highest_year_of_school <- as.numeric(q1dat$highest_year_of_school)
+
+q1dat <- q1dat %>%
+  filter(!is.na(highest_year_of_school))
+
+q1dat <- q1dat %>%
+  group_by(party_affiliation) %>%
+  summarize(averageEducation = mean(highest_year_of_school))
+
+print(q1dat)
+```
+
+It is hard to draw conclusions or see any patterns as each group has similar average of education levels.
+
+## Question 2
+
+Did similar data cleaning as in beginning of question 1. Then joined q2dat and q1dat to get the mean education level for each party for each person in q2dat. Then found the individuals whose education level was higher than their political party affiliation mean.
+
+```{r q2}
+q2dat <- dat
+
+q2dat$highest_year_of_school <- as.numeric(q2dat$highest_year_of_school)
+
+q2dat <- q2dat %>%
+  filter(!is.na(highest_year_of_school)) %>%
+  left_join(q1dat, by = 'party_affiliation') %>%
+  filter(highest_year_of_school > averageEducation)
+
+str(q2dat)
+```
+
+## Question 3
+
+Selected only marital status and general happiness from dat to look at and then created a stacked bar graph showing the percentage of happiness in each marital status group by general happiness.
+
+```{r q3}
+q3dat <- dat %>%
+  select(marital_status, general_happiness)
+
+summary(q3dat)
+
+ggplot(q3dat, aes(fill = general_happiness, x = marital_status), ) + geom_bar(position = 'fill') + xlab('Marital Status') + ylab('Percentage of General Happiness') + labs(fill = 'General Happiness')
+```
+Based on the graph it appears that those who are married are generally more happy compared to those in the other marital status columns. Overall though most groups except for the no answer group is generally happy.
+
+## Question 4
+
+Used facet wrap to show multiple graphs, one for each category in party affiliation.
+
+```{r q4}
+q4dat <- select(dat, marital_status, general_happiness, party_affiliation)
+
+summary(q4dat)
+
+ggplot(q4dat, aes(fill = general_happiness, x = marital_status)) + geom_bar(position = 'fill') + xlab('Marital Status') + ylab('Percentage of General Happiness') + labs(fill = 'General Happiness') + facet_wrap('party_affiliation') + theme(axis.text.x = element_text(angle = 90))
+```
+It appears between the opposite graphs (ex. Strong Republican vs Strong Democrat, Not Str Republican vs. Not Str Democrat) that there is little change and hardly any correlation that party affiliation affects marital status to general happiness.
+
+## Question 5
+
+Created a table containing only marital status and highest year of school. Turned highest year of school column into a numeric column to be able to better display the data. Ordered the table by highest year of school and created a graph showing relation between marital status and highest year of school completed.
+
+```{r q5}
+q5dat <- select(dat, marital_status, highest_year_of_school)
+
+q5dat$highest_year_of_school <- as.numeric(q5dat$highest_year_of_school)
+
+q5dat <- q5dat[order(q5dat$highest_year_of_school),]
+
+summary(q5dat)
+
+ggplot(q5dat, aes(fill = marital_status, x = highest_year_of_school)) + geom_bar(position = 'fill') + xlab('Highest Year of School Completed') + ylab('Percentage of Marital Status') + labs(fill = 'Marital Status')
+
+```
+It appears that those who didn't get past elementary school (0-8) they are less likely to be divorced, more likely to be widowed and less likely to have never married. It's possible that they are an older generation since they're more likely to have gotten married and also be widowed. Also they are less likely to have gotten divorced as that was looked down upon back then.
+
+For those who completed high school and above, it appears that they are the opposite of the first group they're less likely to have gotten married and also be widowed. Also they are more likely to have gotten divorced.
+
+## Question 6
+
+## Part A
+
+The first question I want to look at is how the individuals sex compares to level of education obtained. Created a new data set containing highest year of school and sex. Turned highest year of school column into a numeric column. Created a graph showing relation between highest year of school completed and sex.
+
+```{r q6a}
+q6adat <- select(dat, highest_year_of_school, sex)
+
+q6adat$highest_year_of_school <- as.numeric(q6adat$highest_year_of_school)
+
+summary(q6adat)
+
+ggplot(q6adat, aes(y = highest_year_of_school, x = sex)) + geom_boxplot() + xlab('Sex') + ylab('Highest Year of School Completed')
+```
+
+It appears that the average education level of male and females is about the same at about 12 years which would equal a high school diploma. However it looks like males are slightly more likely to pursue a higher education.
+
+## Part B
+
+The second question I want to look at is how general happiness has changed over the years.
+
+```{r q6b}
+q6bdat <- select(dat, gss_year, general_happiness)
+
+summary(q6bdat)
+
+ggplot(q6bdat, aes(fill = general_happiness, x = factor(gss_year))) + geom_bar(position = 'fill') + xlab('GSS Year') + ylab('Percentage of General Happiness') + labs(fill = 'General Happiness') + theme(axis.text.x = element_text(angle = 90))
+
+```
+
+Overall it appears that people are generally happy and there is little change in the data except between 2000 - 2006. Here there are a number of individuals who responded Not Applicable as an answer to their general happiness. It is unclear as to why this is.
